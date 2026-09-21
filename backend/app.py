@@ -20,6 +20,28 @@ def handlePost():
 
     return {"result": sanitisedNote};
 
+def screenRawNoteAgainstClassifier(rawNoteText):
+    payload = {
+    'model': 'llama-guard3:8b',
+    'messages': [
+        {'role': 'user', 'content': rawNoteText}
+    ],
+    'options' : {
+        'temperature': 0.0
+    },
+    'stream': False
+    }
+
+    url = "http://localhost:11434/api/chat"
+    response = requests.post(url, json=payload)
+    extractedData = (response.json()["message"]["content"]).strip()
+
+    if extractedData == "safe":
+        return rawNoteText
+    else:
+        print(extractedData)
+        return None
+
 # Function below used to filter out key phrases which could cause prompt injections. Uses Regex to filter based on list, ignoring case-sensitivity, and outputting text WITHOUT command
 def filterSuspiciousPhrases(rawNoteText):
     englishPhrases = [
@@ -47,11 +69,12 @@ def filterSuspiciousPhrases(rawNoteText):
         r"(translate|repeat|output)\s+(your|the\s+(system|previous))\s+(prompt|instructions)"
     ]
 
-    allPatterns = englishPhrases + technicalPatterns
-
+    englishPhrasesSquashed = [phrase.replace(" ", "") for phrase in englishPhrases]    
+    allPatterns = englishPhrasesSquashed + technicalPatterns
     blockedPhrases = "|".join(allPatterns)
 
-    filteredNoteText = re.sub(f'(?:{blockedPhrases})', '', rawNoteText, flags=re.IGNORECASE )
+    rawNoteTextSquashed = rawNoteText.replace(" ", "")
+    filteredNoteText = re.sub(f'(?:{blockedPhrases})', '', rawNoteTextSquashed, flags=re.IGNORECASE )
 
     print(filteredNoteText)
     return filteredNoteText
@@ -108,7 +131,10 @@ def cleanNoteContent(unsanitisedNote):
     "\n\n"
     ]
 
-    filteredNote = filterSuspiciousPhrases(unsanitisedNote)
+    screenedNote = screenRawNoteAgainstClassifier(unsanitisedNote)
+    if screenedNote is None: return None
+
+    filteredNote = filterSuspiciousPhrases(screenedNote)
 
     # Native JSON Schema for Layer 3
     json_schema = {
