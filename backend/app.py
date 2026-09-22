@@ -11,20 +11,20 @@ def home():
     return render_template('index.html')
 
 @app.route("/handle_post", methods = ['POST'])
-def handlePost():
+def handle_post():
     data = request.json
-    noteContent = data["note"]
+    note_content = data["note"]
 
-    sanitisedNote = cleanNoteContent(noteContent)
-    print(sanitisedNote)
+    sanitised_note = clean_note_content(note_content)
+    print(sanitised_note)
 
-    return {"result": sanitisedNote};
+    return {"result": sanitised_note}
 
-def screenRawNoteAgainstClassifier(rawNoteText):
+def screen_raw_note_against_classifier(raw_note_text):
     payload = {
     'model': 'llama-guard3:8b',
     'messages': [
-        {'role': 'user', 'content': rawNoteText}
+        {'role': 'user', 'content': raw_note_text}
     ],
     'options' : {
         'temperature': 0.0
@@ -34,17 +34,17 @@ def screenRawNoteAgainstClassifier(rawNoteText):
 
     url = "http://localhost:11434/api/chat"
     response = requests.post(url, json=payload)
-    extractedData = (response.json()["message"]["content"]).strip()
+    extracted_data = (response.json()["message"]["content"]).strip()
 
-    if extractedData == "safe":
-        return rawNoteText
+    if extracted_data == "safe":
+        return raw_note_text
     else:
-        print(extractedData)
+        print(extracted_data)
         return None
 
 # Function below used to filter out key phrases which could cause prompt injections. Uses Regex to filter based on list, ignoring case-sensitivity, and outputting text WITHOUT command
-def filterSuspiciousPhrases(rawNoteText):
-    englishPhrases = [
+def filter_suspicious_phrases(raw_note_text):
+    english_phrases = [
         r"ignore all previous instructions",
         r"ignore previous instructions",
         r"ignore the above",
@@ -62,61 +62,61 @@ def filterSuspiciousPhrases(rawNoteText):
         r"pretend you are"
     ]
 
-    technicalPatterns = [
+    technical_patterns = [
         r"<\|(im_start|im_end|system|user|assistant)\|>",
         r"\\n\\n(System|Assistant):",
         r"forget\s+everything",
         r"(translate|repeat|output)\s+(your|the\s+(system|previous))\s+(prompt|instructions)"
     ]
 
-    englishPhrasesSquashed = [phrase.replace(" ", "") for phrase in englishPhrases]    
-    allPatterns = englishPhrasesSquashed + technicalPatterns
-    blockedPhrases = "|".join(allPatterns)
+    english_phrases_squashed = [phrase.replace(" ", "") for phrase in english_phrases]    
+    all_patterns = english_phrases_squashed + technical_patterns
+    blocked_phrases = "|".join(all_patterns)
 
-    rawNoteTextSquashed = rawNoteText.replace(" ", "")
-    filteredNoteText = re.sub(f'(?:{blockedPhrases})', '', rawNoteTextSquashed, flags=re.IGNORECASE )
+    raw_note_text_squashed = raw_note_text.replace(" ", "")
+    filtered_note_text = re.sub(f'(?:{blocked_phrases})', '', raw_note_text_squashed, flags=re.IGNORECASE )
 
-    print(filteredNoteText)
-    return filteredNoteText
+    print(filtered_note_text)
+    return filtered_note_text
 
 # Extracts texts from header and content sections of the dictionary
-def extractPlainTextFromSections(dataDict):
-    combinedText = " ".join(section["header"] + " " + section["content"] for section in dataDict["sections"])
-    return combinedText
+def extract_plain_text_from_sections(data_dict):
+    combined_text = " ".join(section["header"] + " " + section["content"] for section in data_dict["sections"])
+    return combined_text
 
 # Function strips markdown style symbols from given text
-def stripFormattingSymbols(text):
-    strippedText = re.sub(r'#', '', text)
-    return strippedText
+def strip_formatting_symbols(text):
+    stripped_text = re.sub(r'#', '', text)
+    return stripped_text
 
 # Function to check suspicious collapse if met with prompt injection by checking "sanitised note" length against unsanitised using threshold
-def checkWordCountAgainstThreshold (unsanitisedNote, sanitisedNote):
-    sanitisedNote = extractPlainTextFromSections(sanitisedNote)
+def check_word_count_against_threshold(unsanitised_note, sanitised_note):
+    sanitised_note = extract_plain_text_from_sections(sanitised_note)
 
-    strippedUnsanitisedNote = stripFormattingSymbols(unsanitisedNote)
-    strippedSanitisedNote = stripFormattingSymbols(sanitisedNote)
+    stripped_unsanitised_note = strip_formatting_symbols(unsanitised_note)
+    stripped_sanitised_note = strip_formatting_symbols(sanitised_note)
 
-    unsanitisedNoteWordCount = len(strippedUnsanitisedNote.split())
-    sanitisedNoteWordCount = len(strippedSanitisedNote.split())
+    unsanitised_note_word_count = len(stripped_unsanitised_note.split())
+    sanitised_note_word_count = len(stripped_sanitised_note.split())
 
     threshold = 0.3
 
-    if sanitisedNoteWordCount < (unsanitisedNoteWordCount * threshold):
+    if sanitised_note_word_count < (unsanitised_note_word_count * threshold):
         return True
     
     return False
 
 # Function to post given payload to LLM
-def postRequestAndExtractData(payload):
+def post_request_and_extract_data(payload):
     url = "http://localhost:11434/api/chat"
 
     response = requests.post(url, json=payload)
-    extractedData = json.loads(response.json()["message"]["content"])
+    extracted_data = json.loads(response.json()["message"]["content"])
 
-    return extractedData
+    return extracted_data
 
 # Function used to clean user note by removing blocked phrases, fixing structure before turning into flashcards
-def cleanNoteContent(unsanitisedNote):
+def clean_note_content(unsanitised_note):
     instructions = [
     "You will be given a set of notes.",
     "Identify each distinct topic or subtopic in the notes and create a SEPARATE section object for each one. Do not merge multiple topics into a single section, even if they are related — each topic must have its own entry in the sections list.",
@@ -131,10 +131,10 @@ def cleanNoteContent(unsanitisedNote):
     "\n\n"
     ]
 
-    screenedNote = screenRawNoteAgainstClassifier(unsanitisedNote)
-    if screenedNote is None: return None
+    screened_note = screen_raw_note_against_classifier(unsanitised_note)
+    if screened_note is None: return None
 
-    filteredNote = filterSuspiciousPhrases(screenedNote)
+    filtered_note = filter_suspicious_phrases(screened_note)
 
     # Native JSON Schema for Layer 3
     json_schema = {
@@ -164,7 +164,7 @@ def cleanNoteContent(unsanitisedNote):
             },
             {
                 'role' : 'user',
-                'content' : f'<user_input>\n{filteredNote}\n</user_input>'
+                'content' : f'<user_input>\n{filtered_note}\n</user_input>'
             }
         ],
         'format' : json_schema,  # Pass the explicit schema dict here
@@ -174,23 +174,23 @@ def cleanNoteContent(unsanitisedNote):
         'stream' : False
     }
 
-    sanitisedNote = postRequestAndExtractData(payload)
-    isSuspiciouslyShort = checkWordCountAgainstThreshold(unsanitisedNote, sanitisedNote)
+    sanitised_note = post_request_and_extract_data(payload)
+    is_suspiciously_short = check_word_count_against_threshold(unsanitised_note, sanitised_note)
 
-    if isSuspiciouslyShort:
+    if is_suspiciously_short:
         print("in first if statement due to shortness")
-        sanitisedNote = postRequestAndExtractData(payload)
-        isSuspiciouslyShort = checkWordCountAgainstThreshold(unsanitisedNote, sanitisedNote)
+        sanitised_note = post_request_and_extract_data(payload)
+        is_suspiciously_short = check_word_count_against_threshold(unsanitised_note, sanitised_note)
 
-        if isSuspiciouslyShort:
+        if is_suspiciously_short:
             print("in second if statement due to retry")
             return None
 
-    return sanitisedNote
+    return sanitised_note
 
 
-def noteToFlashcardGeneration(sanitisedNote):
-    flashcardGnerationPrompt = ""
+def note_to_flashcard_generation(sanitised_note):
+    flashcard_generation_prompt = ""
     return ""
 
 
