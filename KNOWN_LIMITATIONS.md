@@ -17,3 +17,14 @@
   was deliberately deferred: for this app's actual use case (student notes, where `#` is overwhelmingly 
   used as a markdown header), the current behaviour is an accepted simplification given scope/deadline 
   constraints.
+
+- **Regex blocklist does not catch paraphrased injection attempts.** `filter_suspicious_phrases` 
+  matches exact phrases (with flexible whitespace tolerance for spacing obfuscation), but has no 
+  concept of meaning or synonyms. A paraphrased injection — e.g. "ignore everything above" instead 
+  of the blocklisted "ignore the above" — will pass through this layer completely unfiltered. Testing 
+  confirmed this gap is still caught by the downstream layers (Qwen's instruction-following and JSON 
+  schema constraints correctly ignored the unfiltered injection in practice), so the system as a whole 
+  did not fail — but the blocklist layer specifically should not be relied upon as a complete defence 
+  against reworded phrasing. Addressing this properly would require semantic understanding rather than 
+  pattern matching, which is why this is treated as the responsibility of the model-level instructions 
+  rather than something to patch into the regex layer itself.
