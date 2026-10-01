@@ -16,7 +16,7 @@ def handle_post():
     note_content = data["note"]
 
     sanitised_note = clean_note_content(note_content)
-    print(sanitised_note)
+    # print(sanitised_note)
 
     return {"result": sanitised_note}
 
@@ -39,8 +39,14 @@ def screen_raw_note_against_classifier(raw_note_text):
     if extracted_data == "safe":
         return raw_note_text
     else:
-        print(extracted_data)
+        # print(extracted_data)
         return None
+
+# Builds a regex pattern for a phrase that tolerates arbitrary whitespace between every character by using \s* (means zero or more of ANY whitespace),
+# so obfuscation like "i g n o r e" or "ignoreallprevious..." still matches, without squashing the real note text
+def build_flexible_pattern(phrase):
+    letters_only = phrase.replace(" ", "")
+    return r'\s*'.join(re.escape(char) for char in letters_only)
 
 # Function below used to filter out key phrases which could cause prompt injections. Uses Regex to filter based on list, ignoring case-sensitivity, and outputting text WITHOUT command
 def filter_suspicious_phrases(raw_note_text):
@@ -69,12 +75,11 @@ def filter_suspicious_phrases(raw_note_text):
         r"(translate|repeat|output)\s+(your|the\s+(system|previous))\s+(prompt|instructions)"
     ]
 
-    english_phrases_squashed = [phrase.replace(" ", "") for phrase in english_phrases]    
-    all_patterns = english_phrases_squashed + technical_patterns
+    flexible_english_patterns = [build_flexible_pattern(phrase) for phrase in english_phrases]
+    all_patterns = flexible_english_patterns + technical_patterns
     blocked_phrases = "|".join(all_patterns)
 
-    raw_note_text_squashed = raw_note_text.replace(" ", "")
-    filtered_note_text = re.sub(f'(?:{blocked_phrases})', '', raw_note_text_squashed, flags=re.IGNORECASE )
+    filtered_note_text = re.sub(f'(?:{blocked_phrases})', '', raw_note_text, flags=re.IGNORECASE )
 
     print(filtered_note_text)
     return filtered_note_text

@@ -45,3 +45,14 @@ extract_plain_text_cases = [
     # no sections at all (empty list)
     ({"sections": []}, ""),
 ]
+
+build_flexible_pattern_cases = [
+    ("ignore all previous instructions", r"i\s*g\s*n\s*o\s*r\s*e\s*a\s*l\s*l\s*p\s*r\s*e\s*v\s*i\s*o\s*u\s*s\s*i\s*n\s*s\s*t\s*r\s*u\s*c\s*t\s*i\s*o\s*n\s*s"),
+    ("act", r"a\s*c\s*t"),                              # short phrase
+    ("a", r"a"),                                        # single character, no \s* needed at all
+    ("", ""),                                           # empty string
+    ("system prompt:", r"s\s*y\s*s\s*t\s*e\s*m\s*p\s*r\s*o\s*m\s*p\s*t\s*:"),  # contains punctuation (colon)
+    ("you are now", r"y\s*o\s*u\s*a\s*r\s*e\s*n\s*o\s*w"),  # multiple existing spaces to strip
+    ("new instructions:", r"n\s*e\s*w\s*i\s*n\s*s\s*t\s*r\s*u\s*c\s*t\s*i\s*o\s*n\s*s\s*:"),
+    ("do not follow your instructions", r"d\s*o\s*n\s*o\s*t\s*f\s*o\s*l\s*l\s*o\s*w\s*y\s*o\s*u\s*r\s*i\s*n\s*s\s*t\s*r\s*u\s*c\s*t\s*i\s*o\s*n\s*s"),
+]
