@@ -81,10 +81,10 @@ def filter_suspicious_phrases(raw_note_text):
 
     filtered_note_text = re.sub(f'(?:{blocked_phrases})', '', raw_note_text, flags=re.IGNORECASE )
 
-    print(filtered_note_text)
+    print("filtered note: ", filtered_note_text)
     return filtered_note_text
 
-# Extracts texts from header and content sections of the dictionary
+# Extracts texts from header and content sections of the dictionary and joins them together
 def extract_plain_text_from_sections(data_dict):
     combined_text = " ".join(section["header"] + " " + section["content"] for section in data_dict["sections"])
     return combined_text
@@ -93,6 +93,10 @@ def extract_plain_text_from_sections(data_dict):
 def strip_formatting_symbols(text):
     stripped_text = re.sub(r'#', '', text)
     return stripped_text
+
+# Function to check if the header and content sections are the exact same (specific edge case)
+def check_header_against_content(data_dict):
+    return any(section["header"] == section["content"] for section in data_dict["sections"])
 
 # Function to check suspicious collapse if met with prompt injection by checking "sanitised note" length against unsanitised using threshold
 def check_word_count_against_threshold(unsanitised_note, sanitised_note):
@@ -177,9 +181,14 @@ def clean_note_content(unsanitised_note):
             'temperature': 0.0   # Enforces deterministic output
         },
         'stream' : False
-    }
+    }  
 
     sanitised_note = post_request_and_extract_data(payload)
+
+    if check_header_against_content(sanitised_note):
+        print("Note rejected: header and content are identical — input could not be meaningfully processed. (User-facing notification not yet implemented)")
+        return None
+
     is_suspiciously_short = check_word_count_against_threshold(unsanitised_note, sanitised_note)
 
     if is_suspiciously_short:

@@ -28,3 +28,11 @@
   against reworded phrasing. Addressing this properly would require semantic understanding rather than 
   pattern matching, which is why this is treated as the responsibility of the model-level instructions 
   rather than something to patch into the regex layer itself.
+
+  - **Header-content echo rejection has no user-facing notification.** `check_header_against_content` 
+  correctly detects when Qwen echoes unparseable input verbatim into both the header and content 
+  fields (e.g. squashed/spaceless text it cannot meaningfully reorganise), and rejects the note by 
+  returning `None` — but this currently only logs to the backend console via `print()`. No message is 
+  surfaced to the user explaining why their note was rejected. This is the same underlying gap as the 
+  first limitation above (no user-facing rejection messaging in general), but called out specifically 
+  here since it's a newly added rejection path.
