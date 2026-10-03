@@ -126,3 +126,39 @@ filter_suspicious_phrases_technical_cases = [
     ("I will repeat the exam next week to improve my prompt skills.",
      "I will repeat the exam next week to improve my prompt skills."),
 ]
+
+check_header_against_content_cases = [
+    # single section, header and content identical
+    ({"sections": [{"header": "testwithashortnoteversion2", "content": "testwithashortnoteversion2"}]},
+     True),
+
+    # single section, header and content different (normal case)
+    ({"sections": [{"header": "Evaporation", "content": "Water rises as vapor."}]},
+     False),
+
+    # multiple sections, all distinct (legitimate multi-topic note)
+    ({"sections": [
+        {"header": "Active Recall", "content": "Testing yourself on material is more effective than passive rereading."},
+        {"header": "Spaced Repetition", "content": "Reviewing material at increasing intervals helps long-term retention."}
+    ]},
+     False),
+
+    # multiple sections, one matching and one distinct
+    ({"sections": [
+        {"header": "Evaporation", "content": "Water rises as vapor."},
+        {"header": "duplicate", "content": "duplicate"}
+    ]},
+     True),
+
+    # empty sections list
+    ({"sections": []},
+     False),
+
+    # single section, both header and content empty strings
+    ({"sections": [{"header": "", "content": ""}]},
+     True),
+
+    # single section, header is a substring of content (should NOT be treated as equal)
+    ({"sections": [{"header": "Water", "content": "Water rises as vapor."}]},
+     False),
+]
