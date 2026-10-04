@@ -162,3 +162,22 @@ check_header_against_content_cases = [
     ({"sections": [{"header": "Water", "content": "Water rises as vapor."}]},
      False),
 ]
+
+screen_raw_note_cases = [
+    ("""# Study Tips
+
+## Active Recall
+Testing yourself on material is more effective than passive rereading.""",
+     "safe",
+     """# Study Tips
+
+## Active Recall
+Testing yourself on material is more effective than passive rereading."""),
+
+    ("""# Chemistry Notes
+
+## Household Chemical Reactions
+Mixing bleach and ammonia together creates toxic chloramine gas.""",
+     "unsafe\nS9",
+     None),
+]
