@@ -36,3 +36,16 @@
   surfaced to the user explaining why their note was rejected. This is the same underlying gap as the 
   first limitation above (no user-facing rejection messaging in general), but called out specifically 
   here since it's a newly added rejection path.
+
+  - **Obfuscation beyond spacing is not yet addressed (encoding, homoglyphs, zero-width characters).** 
+  Only character-spacing obfuscation (e.g. "i g n o r e") is currently defended against, via 
+  `build_flexible_pattern`'s whitespace-tolerant regex. Other obfuscation categories — Unicode 
+  homoglyphs (visually identical characters from other alphabets), Base64/hex/ROT13 encoding, 
+  zero-width character insertion, and bidirectional text overrides — are not handled by any current 
+  layer. Researched several purpose-built Python libraries that address this properly (`prompt-canon` 
+  for lightweight Unicode normalisation; `injectionguard` and `prompt-injection-defense` for broader 
+  encoding/homoglyph/pattern detection suites), rather than hand-rolling confusables tables or 
+  recursive encoding detection from scratch, since that would be substantial, accuracy-sensitive work 
+  with limited additional learning value beyond what the spacing fix already demonstrated (layered 
+  defence over any single perfect filter). Deliberately deferred: this will be revisited after 
+  `note_to_flashcard_generation` is implemented, to avoid delaying core feature work.
