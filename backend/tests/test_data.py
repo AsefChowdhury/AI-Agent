@@ -1,4 +1,4 @@
-import pytest
+import json
 
 strip_formatting_cases = [
     ("##Heading##", "Heading"),
@@ -180,4 +180,39 @@ Testing yourself on material is more effective than passive rereading."""),
 Mixing bleach and ammonia together creates toxic chloramine gas.""",
      "unsafe\nS9",
      None),
+]
+
+# Standard parametrize cases
+post_request_and_extract_cases = [
+    (
+        {"message": {"content": json.dumps({"sections": [{"header": "Active Recall", "content": "Testing yourself on material is more effective than passive rereading."}]})}},
+        {'sections': [{'header': 'Active Recall', 'content': 'Testing yourself on material is more effective than passive rereading.'}]}
+    ),
+    (
+        {"message": {"content": json.dumps({"sections": [
+            {"header": "Evaporation", "content": "Water rises as vapor."},
+            {"header": "Condensation", "content": "Vapor cools into droplets."}
+        ]})}},
+        {'sections': [
+            {'header': 'Evaporation', 'content': 'Water rises as vapor.'},
+            {'header': 'Condensation', 'content': 'Vapor cools into droplets.'}
+        ]}
+    ),
+    (
+        {"message": {"content": json.dumps({"sections": []})}},
+        {'sections': []}
+    ),
+]
+
+# Malformed JSON content
+post_request_malformed_json_cases = [
+    {"message": {"content": "{sections: [this is not valid json}"}},
+    {"message": {"content": "not even close to json"}},
+    {"message": {"content": ""}},
+]
+
+# Missing "message" key entirely
+post_request_missing_message_key_cases = [
+    {"error": "model not found"},
+    {},
 ]

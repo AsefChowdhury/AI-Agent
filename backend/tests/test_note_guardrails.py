@@ -1,4 +1,4 @@
-import pytest
+import pytest, json
 from unittest.mock import ANY
 from app import (
     handle_post, 
@@ -19,7 +19,10 @@ from test_data import (
     filter_suspicious_phrases_english_cases,
     filter_suspicious_phrases_technical_cases,
     check_header_against_content_cases,
-    screen_raw_note_cases
+    screen_raw_note_cases,
+    post_request_and_extract_cases,
+    post_request_malformed_json_cases,
+    post_request_missing_message_key_cases
 
 )
 
@@ -60,3 +63,30 @@ def test_screen_raw_note_against_classifier(mocker, input_text, mocked_response,
 
     assert result == expected_output
     mock_post.assert_called_once_with("http://localhost:11434/api/chat", json=ANY)
+
+@pytest.mark.parametrize("mocked_response, expected_extracted_data", post_request_and_extract_cases)
+def test_post_request_and_extract_data(mocker, mocked_response, expected_extracted_data):
+    payload = {}
+    mock_post = mocker.patch("app.requests.post")
+    mock_post.return_value.json.return_value = mocked_response
+
+    result = post_request_and_extract_data(payload)
+    assert result == expected_extracted_data
+
+@pytest.mark.parametrize("mocked_response", post_request_malformed_json_cases)
+def test_post_request_and_extract_data_malformed_json(mocker, mocked_response):
+    payload = {}
+    mock_post = mocker.patch("app.requests.post")
+    mock_post.return_value.json.return_value = mocked_response
+
+    with pytest.raises(json.decoder.JSONDecodeError):
+        post_request_and_extract_data(payload)
+
+@pytest.mark.parametrize("mocked_response", post_request_missing_message_key_cases)
+def test_post_request_and_extract_data_missing_message_key(mocker, mocked_response):
+    payload = {}
+    mock_post = mocker.patch("app.requests.post")
+    mock_post.return_value.json.return_value = mocked_response
+
+    with pytest.raises(KeyError):
+        post_request_and_extract_data(payload)
