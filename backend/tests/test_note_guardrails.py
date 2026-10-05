@@ -15,6 +15,7 @@ from app import (
 from test_data import (
     strip_formatting_cases,
     extract_plain_text_cases,
+    check_word_count_cases,
     build_flexible_pattern_cases,
     filter_suspicious_phrases_english_cases,
     filter_suspicious_phrases_technical_cases,
@@ -37,6 +38,10 @@ def test_extract_plain_text_from_sections(input_dict, expected_text):
 def test_extract_plain_text_missing_key():
     with pytest.raises(KeyError):
         assert extract_plain_text_from_sections({"sections": [{"header": "Heading Only"}, {"content": ""}]})
+
+@pytest.mark.parametrize("input_text, input_dict, expected_text", check_word_count_cases)
+def test_check_word_count_against_threshold(input_text, input_dict, expected_text):
+    assert check_word_count_against_threshold(input_text, input_dict) == expected_text
 
 @pytest.mark.parametrize("input_phrase, expected_phrase", build_flexible_pattern_cases)
 def test_build_flexible_pattern(input_phrase, expected_phrase):
