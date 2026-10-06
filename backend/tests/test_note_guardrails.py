@@ -1,7 +1,6 @@
 import pytest, json
 from unittest.mock import ANY
-from app import (
-    handle_post, 
+from app import ( 
     screen_raw_note_against_classifier,
     build_flexible_pattern,
     filter_suspicious_phrases, 
@@ -10,7 +9,8 @@ from app import (
     check_header_against_content,
     check_word_count_against_threshold, 
     post_request_and_extract_data, 
-    clean_note_content
+    clean_note_content,
+    app
 )
 from test_data import (
     strip_formatting_cases,
@@ -26,8 +26,13 @@ from test_data import (
     post_request_missing_message_key_cases,
     clean_note_content_cases,
     clean_note_content_retry_generation_cases
-
 )
+
+@pytest.fixture
+def client():
+    app.config["TESTING"] = True
+    with app.test_client() as client:
+        yield client
 
 @pytest.fixture
 def mock_post(mocker):
@@ -126,3 +131,12 @@ def test_clean_note_content_retry_generation(mocker, mock_post, raw_note, note_s
 
     result = clean_note_content(raw_note)
     assert result == sanitised_note
+
+def test_handle_post(client, mocker):
+    mock_clean_note_content = mocker.patch("app.clean_note_content")    
+    mock_clean_note_content.return_value = {}
+    
+    response = client.post('/handle_post', json={"note": "some text"})
+
+    assert response.status_code == 200
+    assert response.get_json() == {"result": {}}
