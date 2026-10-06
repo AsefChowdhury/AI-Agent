@@ -315,3 +315,81 @@ post_request_missing_message_key_cases = [
     {"error": "model not found"},
     {},
 ]
+clean_note_content_cases = [
+    # safe input, clean multi-section output
+    (
+        """# Study Tips
+
+## Active Recall
+Testing yourself on material is more effective than passive rereading.
+
+## Spaced Repetition
+Reviewing material at increasing intervals helps long-term retention.""",
+        "safe",
+        json.dumps({"sections": [
+            {"header": "Active Recall", "content": "Testing yourself on material is more effective than passive rereading."},
+            {"header": "Spaced Repetition", "content": "Reviewing material at increasing intervals helps long-term retention."}
+        ]}),
+        {"sections": [
+            {"header": "Active Recall", "content": "Testing yourself on material is more effective than passive rereading."},
+            {"header": "Spaced Repetition", "content": "Reviewing material at increasing intervals helps long-term retention."}
+        ]}
+    ),
+
+    # unsafe input — rejected by Llama Guard, Qwen never meaningfully reached
+    (
+        """# Chemistry Notes
+
+## Household Chemical Reactions
+Mixing bleach and ammonia together creates toxic chloramine gas.""",
+        "unsafe\nS9",
+        "",  # placeholder — never actually used, since clean_note_content short-circuits before this mock is consulted
+        None
+    ),
+
+    # safe input, single section
+    (
+        "Evaporation occurs when heat from the sun causes water to turn into vapor.",
+        "safe",
+        json.dumps({"sections": [{"header": "Evaporation", "content": "Evaporation occurs when heat from the sun causes water to turn into vapor."}]}),
+        {"sections": [{"header": "Evaporation", "content": "Evaporation occurs when heat from the sun causes water to turn into vapor."}]}
+    ),
+]
+
+clean_note_content_retry_generation_cases = [
+    # safe input, first generation collapses (fails word-count threshold), retry succeeds
+    (
+        """# The Water Cycle
+
+## Evaporation
+Evaporation occurs when heat from the sun causes water in oceans, rivers, and lakes to turn into water vapor.
+
+## Condensation
+As water vapor rises and cools, it condenses into tiny droplets, forming clouds.""",
+        "safe",
+        json.dumps({"sections": [{"header": "Note", "content": "HACKED"}]}),  # first attempt: collapsed/suspicious
+        json.dumps({"sections": [
+            {"header": "Evaporation", "content": "Evaporation occurs when heat from the sun causes water in oceans, rivers, and lakes to turn into water vapor."},
+            {"header": "Condensation", "content": "As water vapor rises and cools, it condenses into tiny droplets, forming clouds."}
+        ]}),  # retry: succeeds
+        {"sections": [
+            {"header": "Evaporation", "content": "Evaporation occurs when heat from the sun causes water in oceans, rivers, and lakes to turn into water vapor."},
+            {"header": "Condensation", "content": "As water vapor rises and cools, it condenses into tiny droplets, forming clouds."}
+        ]}
+    ),
+
+    # safe input, first generation collapses AND retry also collapses — final reject
+    (
+        """# The Water Cycle
+
+## Evaporation
+Evaporation occurs when heat from the sun causes water in oceans, rivers, and lakes to turn into water vapor.
+
+## Condensation
+As water vapor rises and cools, it condenses into tiny droplets, forming clouds.""",
+        "safe",
+        json.dumps({"sections": [{"header": "Note", "content": "HACKED"}]}),
+        json.dumps({"sections": [{"header": "Note", "content": "HACKED"}]}),  # retry also collapses
+        None
+    ),
+]

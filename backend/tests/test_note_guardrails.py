@@ -23,9 +23,15 @@ from test_data import (
     screen_raw_note_cases,
     post_request_and_extract_cases,
     post_request_malformed_json_cases,
-    post_request_missing_message_key_cases
+    post_request_missing_message_key_cases,
+    clean_note_content_cases,
+    clean_note_content_retry_generation_cases
 
 )
+
+@pytest.fixture
+def mock_post(mocker):
+    return mocker.patch("app.requests.post")
 
 @pytest.mark.parametrize("input_text, expected_text", strip_formatting_cases)
 def test_strip_formatting_symbols(input_text, expected_text):
@@ -60,9 +66,7 @@ def test_check_header_against_content(input_dict, expected_result ):
     assert check_header_against_content(input_dict) == expected_result
 
 @pytest.mark.parametrize("input_text, mocked_response, expected_output", screen_raw_note_cases)
-def test_screen_raw_note_against_classifier(mocker, input_text, mocked_response, expected_output):
-    mock_post = mocker.patch("app.requests.post")
-
+def test_screen_raw_note_against_classifier(mock_post, input_text, mocked_response, expected_output):
     mock_post.return_value.json.return_value = {"message": {"content": mocked_response}}
     result = screen_raw_note_against_classifier(input_text)
 
@@ -70,28 +74,55 @@ def test_screen_raw_note_against_classifier(mocker, input_text, mocked_response,
     mock_post.assert_called_once_with("http://localhost:11434/api/chat", json=ANY)
 
 @pytest.mark.parametrize("mocked_response, expected_extracted_data", post_request_and_extract_cases)
-def test_post_request_and_extract_data(mocker, mocked_response, expected_extracted_data):
+def test_post_request_and_extract_data(mock_post, mocked_response, expected_extracted_data):
     payload = {}
-    mock_post = mocker.patch("app.requests.post")
     mock_post.return_value.json.return_value = mocked_response
 
     result = post_request_and_extract_data(payload)
     assert result == expected_extracted_data
 
 @pytest.mark.parametrize("mocked_response", post_request_malformed_json_cases)
-def test_post_request_and_extract_data_malformed_json(mocker, mocked_response):
+def test_post_request_and_extract_data_malformed_json(mock_post, mocked_response):
     payload = {}
-    mock_post = mocker.patch("app.requests.post")
     mock_post.return_value.json.return_value = mocked_response
 
     with pytest.raises(json.decoder.JSONDecodeError):
         post_request_and_extract_data(payload)
 
 @pytest.mark.parametrize("mocked_response", post_request_missing_message_key_cases)
-def test_post_request_and_extract_data_missing_message_key(mocker, mocked_response):
+def test_post_request_and_extract_data_missing_message_key(mock_post, mocked_response):
     payload = {}
-    mock_post = mocker.patch("app.requests.post")
     mock_post.return_value.json.return_value = mocked_response
 
     with pytest.raises(KeyError):
         post_request_and_extract_data(payload)
+
+@pytest.mark.parametrize("raw_note, note_screening_response, post_request_and_extract_response, sanitised_note", clean_note_content_cases)
+def test_clean_note_content(mocker, mock_post, raw_note, note_screening_response, post_request_and_extract_response, sanitised_note):
+    screening_response = mocker.MagicMock()
+    screening_response.json.return_value = {"message": {"content": note_screening_response}}
+
+    generation_response = mocker.MagicMock()
+    generation_response.json.return_value = {"message": {"content": post_request_and_extract_response}}
+
+    mock_post.side_effect = [screening_response, generation_response]
+
+    result = clean_note_content(raw_note)
+    assert result == sanitised_note
+
+
+@pytest.mark.parametrize("raw_note, note_screening_response, post_request_and_extract_response, post_request_retry_response, sanitised_note", clean_note_content_retry_generation_cases)
+def test_clean_note_content_retry_generation(mocker, mock_post, raw_note, note_screening_response, post_request_and_extract_response, post_request_retry_response, sanitised_note):
+    screening_response = mocker.MagicMock()
+    screening_response.json.return_value = {"message": {"content": note_screening_response}}
+
+    generation_response = mocker.MagicMock()
+    generation_response.json.return_value = {"message": {"content": post_request_and_extract_response}}
+
+    retry_generation_response = mocker.MagicMock()
+    retry_generation_response.json.return_value = {"message": {"content": post_request_retry_response}}
+
+    mock_post.side_effect = [screening_response, generation_response, retry_generation_response]
+
+    result = clean_note_content(raw_note)
+    assert result == sanitised_note
