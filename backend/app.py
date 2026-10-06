@@ -16,8 +16,6 @@ def handle_post():
     note_content = data["note"]
 
     sanitised_note = clean_note_content(note_content)
-    # print(sanitised_note)
-
     return {"result": sanitised_note}
 
 def screen_raw_note_against_classifier(raw_note_text):
@@ -39,7 +37,6 @@ def screen_raw_note_against_classifier(raw_note_text):
     if extracted_data == "safe":
         return raw_note_text
     else:
-        # print(extracted_data)
         return None
 
 # Builds a regex pattern for a phrase that tolerates arbitrary whitespace between every character by using \s* (means zero or more of ANY whitespace),
@@ -81,7 +78,6 @@ def filter_suspicious_phrases(raw_note_text):
 
     filtered_note_text = re.sub(f'(?:{blocked_phrases})', '', raw_note_text, flags=re.IGNORECASE )
 
-    print("filtered note: ", filtered_note_text)
     return filtered_note_text
 
 # Extracts texts from header and content sections of the dictionary and joins them together
