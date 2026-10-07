@@ -1,0 +1,51 @@
+# Known Limitations / TODO
+
+- **No user-facing rejection message on frontend.** When a note is rejected by the guardrails 
+  pipeline, the frontend just receives `{"result": null}` with no explanation shown to the user.
+
+- **Prompt injection defences are layered but not exhaustive.** Current defences (role separation, 
+  regex blocklist, delimiters, JSON schema enforcement, word-count anomaly detection, Llama Guard 
+  classification) cover known attack patterns but are not a complete solution — this is an open, 
+  industry-wide problem. Further mitigation (e.g. model fine-tuning for instruction hierarchy) was 
+  ruled out as out of scope (no training infrastructure or dataset available).
+
+- **`strip_formatting_symbols` cannot distinguish markdown headers from other legitimate uses of `#`.** 
+  The function strips all `#` characters indiscriminately via `re.sub(r'#', '', text)`, which correctly 
+  removes markdown heading markers (`# Heading`) but also incorrectly strips `#` used as part of real 
+  note content (e.g. `#24 LeBron James`, hashtags, numbering). A more targeted regex 
+  (e.g. `^#+\s` to only match `#` at the start of a line followed by whitespace) would fix this, but 
+  was deliberately deferred: for this app's actual use case (student notes, where `#` is overwhelmingly 
+  used as a markdown header), the current behaviour is an accepted simplification given scope/deadline 
+  constraints.
+
+- **Regex blocklist does not catch paraphrased injection attempts.** `filter_suspicious_phrases` 
+  matches exact phrases (with flexible whitespace tolerance for spacing obfuscation), but has no 
+  concept of meaning or synonyms. A paraphrased injection — e.g. "ignore everything above" instead 
+  of the blocklisted "ignore the above" — will pass through this layer completely unfiltered. Testing 
+  confirmed this gap is still caught by the downstream layers (Qwen's instruction-following and JSON 
+  schema constraints correctly ignored the unfiltered injection in practice), so the system as a whole 
+  did not fail — but the blocklist layer specifically should not be relied upon as a complete defence 
+  against reworded phrasing. Addressing this properly would require semantic understanding rather than 
+  pattern matching, which is why this is treated as the responsibility of the model-level instructions 
+  rather than something to patch into the regex layer itself.
+
+  - **Header-content echo rejection has no user-facing notification.** `check_header_against_content` 
+  correctly detects when Qwen echoes unparseable input verbatim into both the header and content 
+  fields (e.g. squashed/spaceless text it cannot meaningfully reorganise), and rejects the note by 
+  returning `None` — but this currently only logs to the backend console via `print()`. No message is 
+  surfaced to the user explaining why their note was rejected. This is the same underlying gap as the 
+  first limitation above (no user-facing rejection messaging in general), but called out specifically 
+  here since it's a newly added rejection path.
+
+  - **Obfuscation beyond spacing is not yet addressed (encoding, homoglyphs, zero-width characters).** 
+  Only character-spacing obfuscation (e.g. "i g n o r e") is currently defended against, via 
+  `build_flexible_pattern`'s whitespace-tolerant regex. Other obfuscation categories — Unicode 
+  homoglyphs (visually identical characters from other alphabets), Base64/hex/ROT13 encoding, 
+  zero-width character insertion, and bidirectional text overrides — are not handled by any current 
+  layer. Researched several purpose-built Python libraries that address this properly (`prompt-canon` 
+  for lightweight Unicode normalisation; `injectionguard` and `prompt-injection-defense` for broader 
+  encoding/homoglyph/pattern detection suites), rather than hand-rolling confusables tables or 
+  recursive encoding detection from scratch, since that would be substantial, accuracy-sensitive work 
+  with limited additional learning value beyond what the spacing fix already demonstrated (layered 
+  defence over any single perfect filter). Deliberately deferred: this will be revisited after 
+  `note_to_flashcard_generation` is implemented, to avoid delaying core feature work.
